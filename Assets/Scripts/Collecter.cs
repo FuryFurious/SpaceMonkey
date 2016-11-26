@@ -14,33 +14,38 @@ public class Collecter : MonoBehaviour {
 
     void OnTriggerStay2D(Collider2D collider)
     {
-        Banana b = collider.GetComponent<Banana>();
+        Banana banana = collider.GetComponent<Banana>();
 
-        if(b)
+        if(banana)
         {
             if (attracks)
             {
-                Vector2 toCenter = gameObject.transform.position - b.gameObject.transform.position;
+                Vector2 toCenter = gameObject.transform.position - banana.gameObject.transform.position;
                 toCenter.Normalize();
 
-                b.myBody.AddForce(toCenter * attractPower);
+                banana.myBody.AddForce(toCenter * attractPower);
             }
 
             else
             {
                 player.AddPoint();
-                b.PlayParticleSystem();
-                Destroy(b.gameObject);
+                banana.PlayParticleSystem();
+                Destroy(banana.gameObject);
             }
         }
 
-        else
+        else if(attracks)
         {
-            PlanetSphere sphere = collider.GetComponent<PlanetSphere>();
+            PlanetSphere planet = collider.GetComponent<PlanetSphere>();
 
-            if(sphere)
+            if(planet)
             {
-                
+                Vector2 toPlanet = planet.gameObject.transform.position - player.transform.position;
+                float increaseFactor = 1.0f / Mathf.Sqrt(toPlanet.magnitude);
+
+                toPlanet.Normalize();
+
+                player.GetRigidBody().AddForce(toPlanet * (planet.GetPullForce() + increaseFactor));
             }
         }
     }

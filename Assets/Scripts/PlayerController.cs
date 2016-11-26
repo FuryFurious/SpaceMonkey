@@ -55,22 +55,36 @@ public class PlayerController : MonoBehaviour {
 
     void FixedUpdate()
     {
-        float xAxis = -Input.GetAxis("Horizontal");
-        myBody.AddTorque(xAxis * xVelocity * Time.fixedDeltaTime, ForceMode2D.Force);
-
-        float yAxis = Input.GetAxis("Vertical");
-
-        if (yAxis != 0.0f)
+        if (GameManager.Instance.gameIsRunning)
         {
-            float scaleFactor = 1.0f;
 
-            float curVelo = Mathf.Sqrt(myBody.velocity.magnitude);
+            float xAxis = -Input.GetAxis("Horizontal");
+            myBody.AddTorque(xAxis * xVelocity * Time.fixedDeltaTime, ForceMode2D.Force);
 
-            if(curVelo > 1.0f)
-                scaleFactor = curVelo;
+            float yAxis = Input.GetAxis("Vertical");
 
-            Vector2 velocity = gameObject.transform.up * yAxis * yVelocity * scaleFactor;
-            myBody.AddForce(velocity);
+            if (yAxis != 0.0f)
+            {
+                float scaleFactor = 1.0f;
+
+                float curVelo = Mathf.Sqrt(myBody.velocity.magnitude);
+
+                if (curVelo > 1.0f)
+                    scaleFactor = curVelo;
+
+                Vector2 velocity = gameObject.transform.up * yAxis * yVelocity * scaleFactor;
+                myBody.AddForce(velocity);
+            }
+
+            if (Input.GetButton("Jump"))
+                myBody.AddForce(dashPower * gameObject.transform.up);
+
+            else
+            {
+                float decrease = -myBody.angularVelocity * angularDecreaseFactor * Time.fixedDeltaTime;
+                myBody.angularVelocity = myBody.angularVelocity + decrease;
+            }
+
         }
 
         //HERE:
@@ -100,15 +114,6 @@ public class PlayerController : MonoBehaviour {
             }
         }
 
-        if (Input.GetButton("Jump"))
-            myBody.AddForce(dashPower * gameObject.transform.up);
-
-        else
-        {
-            float decrease = - myBody.angularVelocity * angularDecreaseFactor * Time.fixedDeltaTime;
-            myBody.angularVelocity = myBody.angularVelocity + decrease;
-        }
-
 
         float tmpVelo = myBody.velocity.magnitude;
 
@@ -116,26 +121,50 @@ public class PlayerController : MonoBehaviour {
             myBody.velocity = myBody.velocity.normalized * maxVelocity;
     }
 
-    /*
-    private IEnumerator Push(float time, float power, float dir)
-    {
-        while(time > 0.0f)
-        {
-            time -= Time.deltaTime;
-            myBody.AddForce(dir * power * myBody.transform.up * Time.deltaTime, ForceMode2D.Impulse);
-            yield return new WaitForEndOfFrame();
-        }
-
-        if (dir >= 0.0f)
-            isPushing = false;
-        else
-            isSlowingDown = false;
-    }
-    */
-
     public void AddPoint()
     {
         numBanana++;
-        UiManager.Instance.UpdatePoints(numBanana);
+
+        if (numBanana == GameManager.Instance.GetNumBananas())
+            GameManager.Instance.EndGame();
+
+        UiManager.Instance.UpdatePoints(GameManager.Instance.GetNumBananas() - numBanana);
+    }
+
+    internal void Reset()
+    {
+        Vector3 camDelta = gameObject.transform.position - myCam.transform.position;
+        camDelta.z = -10.0f;
+
+        gameObject.transform.position = Vector2.zero;
+        myCam.transform.position = camDelta;
+
+        numBanana = 0;
+    }
+
+    public IEnumerator ResetVelocity()
+    {
+        float normalDrag  = myBody.drag;
+        float normalAngularDrag = myBody.angularDrag;
+
+        myBody.drag = 5.0f;
+        myBody.angularDrag = 5.0f;
+
+        yield return new WaitForSeconds(2.0f);
+
+
+        myBody.drag = normalDrag;
+        myBody.angularDrag = normalAngularDrag;
+    }
+
+    public void ResetDuse()
+    {
+        lastNumParticles = -1.0f;
+
+        for (int i = 0; i < duseSystems.Length; i++)
+        {
+            var emission = duseSystems[i].emission;
+            emission.rate = 0.0f;
+        }
     }
 }

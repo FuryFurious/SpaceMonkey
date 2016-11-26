@@ -1,7 +1,10 @@
 using UnityEngine;
 using System.Collections;
+using System.Collections.Generic;
 
 public class GameManager : MonoBehaviour {
+
+    public static GameManager Instance { get; private set; }
 
     [SerializeField]
     private float levelRadius = 100.0f;
@@ -17,6 +20,7 @@ public class GameManager : MonoBehaviour {
     private float clusterRadiusMin = 2.0f;
     [SerializeField]
     private float clusterRadiusMax = 10.0f;
+
     [SerializeField]
     private int clusterSize = 5;
     [SerializeField]
@@ -44,35 +48,88 @@ public class GameManager : MonoBehaviour {
     [SerializeField]
     private float planetSpawnChance = 0.15f;
 
+    [SerializeField]
+    private int numBananas = 50;
+
+    private List<GameObject> createdObjects = new List<GameObject>();
+
+    public bool gameIsRunning = false;
+
+    [SerializeField]
+    private PlayerController player;
+
+    public int GetNumBananas()
+    {
+        return numBananas;
+    }
+
+    public void StartGame()
+    {
+        Debug.Assert(createdObjects.Count != 0);
+
+        gameIsRunning = true;
+        UiManager.Instance.ShowInGame(true);
+    }
+
+    public void EndGame()
+    {
+        gameIsRunning = false;
+
+        StartCoroutine(GameWonRoutine());
+    }
+
+    private void ResetGame()
+    {
+        player.Reset();
+
+        CreateLevel();
+    }
+
 	private void Awake () 
     {
-        CreateLevel();
+        Debug.Assert(!Instance);
+
+        Instance = this;
+
+        ResetGame();
 	}
 	
     private void CreateLevel()
     {
-        CreateMeteoriteCluster();
+        StartCoroutine(CreateMeteoriteCluster());
     }
 
-    private void CreateMeteoriteCluster()
+    private IEnumerator CreateMeteoriteCluster()
     {
+        int bananaCount = 0;
+
+        //create cluster:
         for (int i = 0; i < numCluster; i++)
         {
             Vector2 center = GetRandDir() * Random.Range(levelRadiusNoCluster, levelRadius);
 
+            float radiusPercent = center.magnitude / levelRadius;
+
             if (Random.value < planetSpawnChance)
                 CreatePlanetAt(center);
 
-            else
+            else if(bananaCount < numBananas)
+            {
                 CreateBananaAt(center);
+                bananaCount++;
+            }
 
-            int numColliders = Random.Range(1, clusterSize);
+            int numColliders = (int)(radiusPercent * clusterSize);
 
+            //create meteroids:
             for (int j = 0; j < numColliders; j++)
             {
-                Vector2 colliderDir = GetRandDir(Random.Range(clusterRadiusMin, clusterRadiusMax));
+                Vector2 colliderDir = GetRandDir(Random.Range(clusterRadiusMin, clusterRadiusMax) * (1.0f + radiusPercent));
 
                 GameObject collider = Instantiate(RandomColliderPrefab());
+
+                createdObjects.Add(collider);
+
                 collider.transform.position = center + colliderDir;
 
                 float scaleX = Random.Range(minScaleCollider, maxScaleCollider);
@@ -84,7 +141,18 @@ public class GameManager : MonoBehaviour {
                 Rigidbody2D body = collider.GetComponent<Rigidbody2D>();
 
                 body.mass = body.mass * scaleX * scaleY;
+
+                yield return new WaitForEndOfFrame();
             }
+        }
+
+
+        int missingBananas = Mathf.Max(numBananas - bananaCount, 0);
+
+        for (int i = 0; i < missingBananas; i++)
+        {
+            Debug.Log("created banana " + i);
+            CreateBananaAt(GetRandDir(levelRadius));
         }
     }
 
@@ -114,6 +182,8 @@ public class GameManager : MonoBehaviour {
     {
         Planet p = Instantiate(planetPrefab.gameObject).GetComponent<Planet>();
 
+        createdObjects.Add(p.gameObject);
+
         p.gameObject.transform.position = pos;
         p.gameObject.transform.Rotate(0.0f, 0.0f, Random.Range(0.0f, 360.0f));
         p.transform.localScale *= Random.Range(planeSizeMin, planetSizeMax);
@@ -126,5 +196,29 @@ public class GameManager : MonoBehaviour {
         p.rendererOne.gameObject.transform.Rotate(0.0f, 0.0f, Random.Range(0.0f, 360.0f));
         p.rendererOne.flipX = Random.value < 0.5f;
         p.rendererOne.flipY = Random.value < 0.5f;
+    }
+
+    private IEnumerator GameWonRoutine()
+    {
+        StartCoroutine(player.ResetVelocity());
+
+        for (int i = 0; i < createdObjects.Count; i++)
+        {
+            player.GetRigidBody().AddForce(-player.GetRigidBody().velocity * Time.deltaTime);
+
+            Destroy(createdObjects[i]);
+            yield return new WaitForEndOfFrame();
+        }
+
+
+        player.Reset();
+
+        createdObjects.Clear();
+
+        StartCoroutine(CreateMeteoriteCluster());
+
+        yield return new WaitForSeconds(1.0f);
+
+        UiManager.Instance.ShowInGame(false);
     }
 }
