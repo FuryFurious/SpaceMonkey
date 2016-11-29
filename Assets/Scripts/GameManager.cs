@@ -22,9 +22,17 @@ public class GameManager : MonoBehaviour {
     private float clusterRadiusMax = 10.0f;
 
     [SerializeField]
+    private AudioSource pickup;
+
+    [SerializeField]
+    private int maxPlanets = 3;
+    [SerializeField]
     private int clusterSize = 5;
     [SerializeField]
     private int numCluster = 100;
+
+    [SerializeField]
+    private int additionalBananas = 10;
 
     [SerializeField]
     private Banana bananaPrefab;
@@ -56,11 +64,27 @@ public class GameManager : MonoBehaviour {
     public bool gameIsRunning = false;
 
     [SerializeField]
+    private AudioSource hitSound;
+
+    [SerializeField]
     private PlayerController player;
+
+    public int NumBananas { get { return this.numBananas + this.additionalBananas; } }
+
+    public PlayerController GetPlayer()
+    {
+        return player;
+    }
+
+    public void PlayPickup()
+    {
+        if(this.pickup)
+            this.pickup.Play();
+    }
 
     public int GetNumBananas()
     {
-        return numBananas;
+        return numBananas + additionalBananas;
     }
 
     public void StartGame()
@@ -102,6 +126,7 @@ public class GameManager : MonoBehaviour {
     private IEnumerator CreateMeteoriteCluster()
     {
         int bananaCount = 0;
+        int planetCount = 0;
 
         //create cluster:
         for (int i = 0; i < numCluster; i++)
@@ -110,8 +135,11 @@ public class GameManager : MonoBehaviour {
 
             float radiusPercent = center.magnitude / levelRadius;
 
-            if (Random.value < planetSpawnChance)
+            if (Random.value < planetSpawnChance && planetCount < maxPlanets)
+            {
                 CreatePlanetAt(center);
+                planetCount++;
+            }
 
             else if(bananaCount < numBananas)
             {
@@ -147,12 +175,11 @@ public class GameManager : MonoBehaviour {
         }
 
 
-        int missingBananas = Mathf.Max(numBananas - bananaCount, 0);
+        int missingBananas = Mathf.Max(numBananas - bananaCount, 0) + additionalBananas;
 
         for (int i = 0; i < missingBananas; i++)
         {
-            Debug.Log("created banana " + i);
-            CreateBananaAt(GetRandDir(levelRadius));
+            CreateBananaAt(GetRandDir(Random.Range(levelRadiusNoCluster, levelRadius)));
         }
     }
 
@@ -171,11 +198,13 @@ public class GameManager : MonoBehaviour {
         return new Vector2(Mathf.Cos(radian), Mathf.Sin(radian));
     }
 
-    private void CreateBananaAt(Vector3 pos)
+    private Banana CreateBananaAt(Vector3 pos)
     {
         GameObject bananaInstance = Instantiate(bananaPrefab.gameObject);
         bananaInstance.transform.position = pos;
         bananaInstance.transform.Rotate(0.0f, 0.0f, Random.Range(0.0f, 360.0f));
+
+        return bananaInstance.GetComponent<Banana>();
     }
 
     private void CreatePlanetAt(Vector3 pos)
@@ -210,7 +239,6 @@ public class GameManager : MonoBehaviour {
             yield return new WaitForEndOfFrame();
         }
 
-
         player.Reset();
 
         createdObjects.Clear();
@@ -219,6 +247,21 @@ public class GameManager : MonoBehaviour {
 
         yield return new WaitForSeconds(1.0f);
 
+        UiManager.Instance.ShowAnyKeyText(true);
+
+        while(!Input.anyKey)
+        {
+
+            yield return new WaitForEndOfFrame();
+        }
+
+        UiManager.Instance.ShowAnyKeyText(false);
+
         UiManager.Instance.ShowInGame(false);
+    }
+
+    public void PlayHitSound()
+    {
+        hitSound.Play();
     }
 }

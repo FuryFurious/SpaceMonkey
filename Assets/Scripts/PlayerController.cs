@@ -3,12 +3,17 @@ using System.Collections;
 
 public class PlayerController : MonoBehaviour {
 
-    private const float VELOCITY_TRIGGER = 4.0f;
+    private const float VELOCITY_TRIGGER = 7.5f;
     private const float ANGULAR_TRIGGER = 180.0f;
 
     private const float MIN_NUM_PARTICLES = 0.0f;
     private const float MAX_NUM_PARTICLES = 100.0f;
-    
+
+    [SerializeField]
+    private AudioSource jetPackSource;
+    [SerializeField]
+    private AudioSource monkeySource;
+
     [SerializeField]
     private Camera myCam;
     [SerializeField]
@@ -19,6 +24,18 @@ public class PlayerController : MonoBehaviour {
     private Animator myAnimator;
     [SerializeField]
     private GameObject headRoot;
+
+    [SerializeField]
+    private float soundChance = 0.2f;
+
+    [SerializeField]
+    private float minPitch = 0.9f;
+
+    [SerializeField]
+    private float maxPitch = 1.1f;
+
+    [SerializeField]
+    private float soundScale = 0.5f;
 
     [SerializeField]
     private float yVelocity = 1.0f;
@@ -76,8 +93,16 @@ public class PlayerController : MonoBehaviour {
                 myBody.AddForce(velocity);
             }
 
-            if (Input.GetButton("Jump"))
-                myBody.AddForce(dashPower * gameObject.transform.up);
+            if (Input.GetButton("Jump")){
+
+                float changeVeloPercent = 0.15f;
+                Vector2 curVelo = myBody.velocity;
+                Vector2 curVeloDir = curVelo.normalized;
+                Vector2 newVelo = curVelo;
+
+                newVelo = curVelo - curVeloDir * changeVeloPercent * Time.fixedDeltaTime;
+                myBody.velocity = newVelo + dashPower * (Vector2)gameObject.transform.up * Time.fixedDeltaTime;
+            }
 
             else
             {
@@ -114,11 +139,15 @@ public class PlayerController : MonoBehaviour {
             }
         }
 
+        jetPackSource.volume = lerpValue * soundScale;
 
         float tmpVelo = myBody.velocity.magnitude;
 
         if (tmpVelo > maxVelocity)
             myBody.velocity = myBody.velocity.normalized * maxVelocity;
+
+        if (Input.GetKeyDown(KeyCode.P))
+            TryMonkeySound();
     }
 
     public void AddPoint()
@@ -129,6 +158,17 @@ public class PlayerController : MonoBehaviour {
             GameManager.Instance.EndGame();
 
         UiManager.Instance.UpdatePoints(GameManager.Instance.GetNumBananas() - numBanana);
+
+        TryMonkeySound();
+    }
+
+    private void TryMonkeySound()
+    {
+        if (!monkeySource.isPlaying && Random.value < soundChance)
+        {
+            monkeySource.pitch = minPitch + Random.value * (maxPitch - minPitch);
+            monkeySource.Play();
+        }
     }
 
     internal void Reset()

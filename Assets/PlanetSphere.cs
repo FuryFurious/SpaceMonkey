@@ -11,6 +11,6 @@ public class PlanetSphere : MonoBehaviour
 
     public float GetPullForce()
     {
-        return planet.transform.localScale.x * planet.transform.localScale.y * pullFactor;
+        return planet.transform.localScale.y * pullFactor;
     }
 }

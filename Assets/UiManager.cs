@@ -12,6 +12,10 @@ public class UiManager : MonoBehaviour {
     [SerializeField]
     private Text timeText;
 
+    [SerializeField]
+    private Text pressAnyKeyText;
+    [SerializeField]
+    private float pressAnyKeyTextSpeed = 1.0f;
 
     [SerializeField]
     private GameObject mainMenuRoot;
@@ -24,8 +28,17 @@ public class UiManager : MonoBehaviour {
 
     private float seconds = 0.0f;
 
+    private Color anyKeyColor = Color.white;
+
     private int minutesInt = 0;
     private int secondsInt = 0;
+
+    private float time;
+
+    public void ShowAnyKeyText(bool val)
+    {
+        this.pressAnyKeyText.gameObject.SetActive(val);
+    }
 
     void Awake()
     {
@@ -74,6 +87,14 @@ public class UiManager : MonoBehaviour {
                     minutesInt++;
                 }
             }
+        }
+
+        time += Time.deltaTime * pressAnyKeyTextSpeed;
+
+        if(pressAnyKeyText.gameObject.activeSelf)
+        {
+            anyKeyColor.a = Mathf.Sin(time) * 0.5f + 0.5f;
+            pressAnyKeyText.color = anyKeyColor;
         }
     }
 
